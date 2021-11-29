@@ -6,15 +6,21 @@ import io.gatarrays.useservice.repository.RoleRepository;
 import io.gatarrays.useservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
 @Slf4j
-public class UserServiceImpl implements UserService{
+public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     @Override
@@ -48,5 +54,21 @@ public class UserServiceImpl implements UserService{
     public List<User> getUsers() {
         log.info("listando todos os usuarios");
         return userRepository.findAll();
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByUserName(username);
+        if(user==null){
+            log.error("Usuario nao existe no banco de dados");
+            throw new UsernameNotFoundException("Usuario nao existe no banco de dados");
+        }else{
+            log.info("usuario encontrado {}"+username);
+        }
+        Collection<SimpleGrantedAuthority> authorities= new ArrayList<>();
+        user.getRoles().forEach(role-> {
+            authorities.add(new SimpleGrantedAuthority(role.getName()));
+        });
+        return new org.springframework.security.core.userdetails.User(user.getName(),user.getPassword(),authorities);
     }
 }
